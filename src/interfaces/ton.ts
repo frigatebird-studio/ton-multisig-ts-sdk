@@ -1,4 +1,4 @@
-import type { Address } from "@ton/core";
+import type { Address, Cell } from "@ton/core";
 import {
   Action,
   MultisigConfig,
@@ -10,6 +10,12 @@ interface OrderParams {
   multisigAddress: Address;
   orderSeqno: bigint;
   expirationDate: number;
+}
+
+interface ContractTransferData {
+  sendToAddress: Address;
+  stateInit?: Cell;
+  payload: Cell;
 }
 
 interface UpdateConfigActionReadable {
@@ -45,4 +51,5 @@ export type {
   UpdateRequest,
   Action,
   ActionReadable,
+  ContractTransferData,
 };

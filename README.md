@@ -29,8 +29,12 @@ declare const UserRejectsError: typeof import("@tonconnect/sdk").UserRejectsErro
 
 ### Deploy Multisig V2
 
-```typescript
-import { deployMultisig, type MultisigConfig } from "ton-multisig-ts-sdk";
+```typescript Deploy Multisig V2
+import {
+  deployMultisig,
+  type MultisigConfig,
+  type ContractTransferData,
+} from "ton-multisig-ts-sdk";
 import { Address, toNano } from "@ton/ton";
 
 // step 1: create multisig config
@@ -46,7 +50,8 @@ const multisigConfig: MultisigConfig = {
 };
 
 // step 2: create multisig contract deploy payloads
-const multisigContractPayload = deployMultisig(multisigConfig);
+const multisigContractPayload: ContractTransferData =
+  deployMultisig(multisigConfig);
 
 // step 3: deploy multisig contract
 if (!connector.connected) {
@@ -93,6 +98,7 @@ import {
   type MultisigConfig,
   type OrderParams,
   type Action,
+  type ContractTransferData,
 } from "ton-multisig-ts-sdk";
 import { Address, toNano, TonClient } from "@ton/ton";
 
@@ -106,31 +112,25 @@ const client = new TonClient({
 const multisigAddress = Address.parse(
   "EQBAJBB3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aA",
 );
-const { nextOrderSeqno, threshold, signers, proposers } =
-  await getMultisigConfig(client, multisigAddress);
-const multisigConfig: MultisigConfig = {
-  threshold: Number(threshold),
-  signers,
-  proposers,
-  allowArbitrarySeqno: nextOrderSeqno === -1n,
-};
+const multisigConfigRaw = await getMultisigConfig(client, multisigAddress);
+const multisigConfig: MultisigConfig = multisigConfigRaw.toConfig();
 
-// step 3: create action (ton transfer)
+// step 3: create action (transfer 1 ton)
 const action: Action = tonTransferAction(
   Address.parse("EQBBJBB3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aB"),
-  toNano("0.002"),
+  toNano("1"),
 );
 
 // step 4: create order params
 const orderParams: OrderParams = {
   multisigAddress: multisigAddress,
-  orderSeqno: nextOrderSeqno,
+  orderSeqno: multisigConfigRaw.nextOrderSeqno,
   expirationDate: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // expires in 24 hours
 };
 
 // step 5: create multisig contract deploy payloads
 const senderAddress = Address.parse(connector.wallet!.account.address);
-const orderContractPayload = deployOrder(
+const orderContractPayload: ContractTransferData = deployOrder(
   senderAddress,
   orderParams,
   multisigConfig,
@@ -179,6 +179,7 @@ import {
   type MultisigConfig,
   type OrderParams,
   type Action,
+  type ContractTransferData,
 } from "ton-multisig-ts-sdk";
 import { Address, toNano, TonClient } from "@ton/ton";
 
@@ -192,14 +193,8 @@ const client = new TonClient({
 const multisigAddress = Address.parse(
   "EQBAJBB3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aA",
 );
-const { nextOrderSeqno, threshold, signers, proposers } =
-  await getMultisigConfig(client, multisigAddress);
-const multisigConfig: MultisigConfig = {
-  threshold: Number(threshold),
-  signers,
-  proposers,
-  allowArbitrarySeqno: nextOrderSeqno === -1n,
-};
+const multisigConfigRaw = await getMultisigConfig(client, multisigAddress);
+const multisigConfig: MultisigConfig = multisigConfigRaw.toConfig();
 
 // step 3: create action (jetton transfer)
 const toAddress = Address.parse(
@@ -215,18 +210,19 @@ const action: Action = jettonTransferAction(
   jettonAmount,
   queryId,
   jettonWalletAddress,
+  multisigAddress, // IMPORTANT: excess ton will be sent back to multisig
 );
 
 // step 4: create order params
 const orderParams: OrderParams = {
   multisigAddress: multisigAddress,
-  orderSeqno: nextOrderSeqno,
+  orderSeqno: multisigConfigRaw.nextOrderSeqno,
   expirationDate: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // expires in 24 hours
 };
 
 // step 5: create multisig contract deploy payloads
 const senderAddress = Address.parse(connector.wallet!.account.address);
-const orderContractPayload = deployOrder(
+const orderContractPayload: ContractTransferData = deployOrder(
   senderAddress,
   orderParams,
   multisigConfig,
@@ -275,6 +271,7 @@ import {
   type MultisigConfig,
   type OrderParams,
   type Action,
+  type ContractTransferData,
 } from "ton-multisig-ts-sdk";
 import { Address, toNano, TonClient } from "@ton/ton";
 
@@ -288,14 +285,8 @@ const client = new TonClient({
 const multisigAddress = Address.parse(
   "EQBAJBB3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aA",
 );
-const { nextOrderSeqno, threshold, signers, proposers } =
-  await getMultisigConfig(client, multisigAddress);
-const multisigConfig: MultisigConfig = {
-  threshold: Number(threshold),
-  signers,
-  proposers,
-  allowArbitrarySeqno: nextOrderSeqno === -1n,
-};
+const multisigConfigRaw = await getMultisigConfig(client, multisigAddress);
+const multisigConfig: MultisigConfig = multisigConfigRaw.toConfig();
 
 // step 3: create action (change signers)
 const action: Action = changeConfigAction(
@@ -310,13 +301,13 @@ const action: Action = changeConfigAction(
 // step 4: create order params
 const orderParams: OrderParams = {
   multisigAddress,
-  orderSeqno: nextOrderSeqno,
+  orderSeqno: multisigConfigRaw.nextOrderSeqno,
   expirationDate: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // expires in 24 hours
 };
 
 // step 5: create multisig contract deploy payloads
 const senderAddress = Address.parse(connector.wallet!.account.address);
-const orderContractPayload = deployOrder(
+const orderContractPayload: ContractTransferData = deployOrder(
   senderAddress,
   orderParams,
   multisigConfig,
@@ -357,8 +348,14 @@ try {
 
 ### Send Approve
 
+#### lowest gas fee (using sdk)
+
 ```typescript
-import { approveOrder, getOrderConfig } from "ton-multisig-ts-sdk";
+import {
+  approveOrder,
+  getOrderConfig,
+  type ContractTransferData,
+} from "ton-multisig-ts-sdk";
 import { Address, toNano, TonClient } from "@ton/ton";
 
 // step 1: initialize tonclient
@@ -371,11 +368,15 @@ const client = new TonClient({
 const orderAddress = Address.parse(
   "EQBAJBB3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aA",
 );
-const orderConfig = await getOrderConfig(client, orderAddress);
+const { signers: orderSigners } = await getOrderConfig(client, orderAddress);
 
 // step 3: create approve payloads
 const senderAddress = Address.parse(connector.wallet!.account.address);
-const approvePayload = approveOrder(senderAddress, orderConfig.signers);
+const approvePayload: ContractTransferData = approveOrder(
+  senderAddress,
+  orderSigners,
+  orderAddress,
+);
 
 // step 4: deploy multisig contract
 if (!connector.connected) {
@@ -386,9 +387,56 @@ const transaction = {
   validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
   messages: [
     {
-      address: orderAddress.toString(),
-      amount: toNano("0.002").toString(),
+      address: approvePayload.sendToAddress.toString(),
+      amount: toNano("0.02").toString(),
       payload: approvePayload.payload.toBoc().toString("base64"),
+    },
+  ],
+};
+
+try {
+  const result = await connector.sendTransaction(transaction);
+
+  // TODO: verify the result here
+  void result;
+} catch (e) {
+  if (e instanceof UserRejectsError) {
+    alert(
+      "You rejected the transaction. Please confirm it to send to the blockchain",
+    );
+  } else {
+    alert("Unknown error happened: " + e.toString());
+  }
+}
+```
+
+#### general (not using sdk)
+
+```typescript
+import { Address, toNano } from "@ton/ton";
+
+// step 1: get order address
+const orderAddress = Address.parse(
+  "EQBAJBB3HagsujBqVfqeDUPJ0kXjgTPLWPFFffuNXNiJL0aA",
+);
+
+// step 2: send approve transaction
+if (!connector.connected) {
+  alert("Please connect wallet to send the transaction!");
+}
+
+const transaction = {
+  validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
+  messages: [
+    {
+      address: approvePayload.sendToAddress.toString(),
+      amount: toNano("0.02").toString(),
+      payload: beginCell()
+        .storeUint(0, 32) // write 32 zero bits to indicate that a text comment will follow
+        .storeStringTail("approve") // write our text comment
+        .endCell()
+        .toBoc()
+        .toString("base64"),
     },
   ],
 };

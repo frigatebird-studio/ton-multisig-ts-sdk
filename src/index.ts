@@ -24,11 +24,35 @@ import type {
   UpdateRequest,
   Action,
   ActionReadable,
+  ContractTransferData,
 } from "./interfaces/ton";
 import { Params, Op, ORDER_MAX_SEQNO } from "./contract/wrappers/Constants";
 import * as MultisigCode from "./contract/compiled/Multisig.compiled.json";
 
-function deployMultisig(config: MultisigConfig) {
+class MultisigConfigRaw {
+  private _interpreted: MultisigConfig;
+
+  constructor(
+    readonly nextOrderSeqno: bigint,
+    readonly threshold: bigint,
+    readonly signers: Address[],
+    readonly proposers: Address[],
+  ) {
+    const config: MultisigConfig = {
+      threshold: Number(threshold),
+      signers,
+      proposers,
+      allowArbitrarySeqno: nextOrderSeqno === -1n,
+    };
+    this._interpreted = Object.freeze(config);
+  }
+
+  toConfig() {
+    return this._interpreted;
+  }
+}
+
+function deployMultisig(config: MultisigConfig): ContractTransferData {
   const code = Cell.fromHex(MultisigCode.hex);
   const data = multisigConfigToCell(config);
   const init: StateInit = { code, data };
@@ -68,7 +92,7 @@ function jettonTransferAction(
   jettonAmount: bigint,
   queryId: number,
   jettonWalletAddress: Address,
-  responseAddress: Address = toAddress,
+  responseAddress: Address,
 ): TransferRequest {
   const body = beginCell()
     .storeUint(Op.jetton.JettonTransfer, 32) // jetton transfer op code
@@ -112,7 +136,7 @@ function deployOrder(
   params: OrderParams,
   multisigConfig: MultisigConfig,
   actions: Action[] | Cell,
-) {
+): ContractTransferData {
   // check if orderSeqno is valid
   if (params.orderSeqno === -1n) {
     params.orderSeqno = ORDER_MAX_SEQNO;
@@ -156,8 +180,9 @@ function deployOrder(
 function approveOrder(
   fromAddress: Address,
   signers: Address[],
+  orderAddress: Address,
   queryId: number = 0,
-) {
+): ContractTransferData {
   const addrCmp = (x: Address) => x.equals(fromAddress);
   const addrIdx = signers.findIndex(addrCmp);
   if (addrIdx < 0) {
@@ -171,6 +196,7 @@ function approveOrder(
     .endCell();
 
   return {
+    sendToAddress: orderAddress,
     payload: body,
   };
 }
@@ -178,7 +204,7 @@ function approveOrder(
 async function getMultisigConfig(
   provider: TonClient,
   multisigAddress: Address,
-) {
+): Promise<MultisigConfigRaw> {
   const { stack } = await provider.runMethod(
     multisigAddress,
     "get_multisig_data",
@@ -188,14 +214,15 @@ async function getMultisigConfig(
   const threshold = stack.readBigNumber();
   const signers = cellToArray(stack.readCellOpt());
   const proposers = cellToArray(stack.readCellOpt());
-  return { nextOrderSeqno, threshold, signers, proposers };
+
+  return new MultisigConfigRaw(nextOrderSeqno, threshold, signers, proposers);
 }
 
 async function getOrderAddressBySeqno(
   provider: TonClient,
   multisigAddress: Address,
   orderSeqno: number,
-) {
+): Promise<Address> {
   let bnOrderSeqno = BigInt(orderSeqno);
   if (orderSeqno === -1) {
     bnOrderSeqno = ORDER_MAX_SEQNO;
@@ -375,4 +402,5 @@ export {
   UpdateRequest,
   Action,
   ActionReadable,
+  ContractTransferData,
 };

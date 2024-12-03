@@ -4,13 +4,7 @@ import {
   SandboxContract,
   TreasuryContract,
 } from "@ton/sandbox";
-import {
-  beginCell,
-  Cell,
-  Dictionary,
-  loadStateInit,
-  toNano,
-} from "@ton/core";
+import { beginCell, Cell, Dictionary, loadStateInit, toNano } from "@ton/core";
 import {
   Action,
   deployMultisig,
@@ -24,7 +18,7 @@ import {
   getOrderAddressBySeqno,
 } from "../src/index";
 import * as OrderCode from "../src/contract/compiled/Order.compiled.json";
-import { TestTonClient, ProcessExpectSuccess } from "./utils"
+import { TestTonClient, ProcessExpectSuccess } from "./utils";
 
 describe("ton blockchain", () => {
   let blockchain: Blockchain;
@@ -80,13 +74,14 @@ describe("ton blockchain", () => {
       // step 1: create multisig config (already done in beforeAll)
       // step 2: create multisig contract deploy payloads
       const multisigContractPayload = deployMultisig(multisigConfig);
+      expect(multisigContractPayload.stateInit).toBeDefined();
 
       // step 3: deploy multisig contract
       const transactions = await deployer.send({
         to: multisigContractPayload.sendToAddress,
         value: toNano("0.002"),
         body: multisigContractPayload.payload,
-        init: loadStateInit(multisigContractPayload.stateInit.beginParse()),
+        init: loadStateInit(multisigContractPayload.stateInit!.beginParse()),
       });
 
       ProcessExpectSuccess.deployMultisig(transactions);
@@ -97,11 +92,12 @@ describe("ton blockchain", () => {
     it("should be successfully deployed", async () => {
       // step 1: deploy multisig contract
       const multisigContractPayload = deployMultisig(multisigConfig);
+      expect(multisigContractPayload.stateInit).toBeDefined();
       const transactions1 = await deployer.send({
         to: multisigContractPayload.sendToAddress,
         value: toNano("0.002"),
         body: multisigContractPayload.payload,
-        init: loadStateInit(multisigContractPayload.stateInit.beginParse()),
+        init: loadStateInit(multisigContractPayload.stateInit!.beginParse()),
       });
 
       ProcessExpectSuccess.deployMultisig(transactions1);
@@ -112,12 +108,7 @@ describe("ton blockchain", () => {
         provider,
         multisigAddress,
       );
-      const multisigConfigLocal: MultisigConfig = {
-        threshold: Number(multisigConfigRaw.threshold),
-        signers: multisigConfigRaw.signers,
-        proposers: multisigConfigRaw.proposers,
-        allowArbitrarySeqno: multisigConfigRaw.nextOrderSeqno === -1n,
-      };
+      const multisigConfigLocal: MultisigConfig = multisigConfigRaw.toConfig();
 
       expect(multisigConfigLocal.threshold).toBe(multisigConfig.threshold);
       expect(multisigConfigLocal.signers.toString()).toEqual(
@@ -164,11 +155,12 @@ describe("ton blockchain", () => {
     it("should be successfully approved", async () => {
       // step 1: deploy multisig contract
       const multisigContractPayload = deployMultisig(multisigConfig);
+      expect(multisigContractPayload.stateInit).toBeDefined();
       const transactions1 = await deployer.send({
         to: multisigContractPayload.sendToAddress,
         value: toNano("0.002"),
         body: multisigContractPayload.payload,
-        init: loadStateInit(multisigContractPayload.stateInit.beginParse()),
+        init: loadStateInit(multisigContractPayload.stateInit!.beginParse()),
       });
 
       ProcessExpectSuccess.deployMultisig(transactions1);
@@ -179,12 +171,7 @@ describe("ton blockchain", () => {
         provider,
         multisigAddress,
       );
-      const multisigConfigLocal: MultisigConfig = {
-        threshold: Number(multisigConfigRaw.threshold),
-        signers: multisigConfigRaw.signers,
-        proposers: multisigConfigRaw.proposers,
-        allowArbitrarySeqno: multisigConfigRaw.nextOrderSeqno === -1n,
-      };
+      const multisigConfigLocal: MultisigConfig = multisigConfigRaw.toConfig();
 
       expect(multisigConfigLocal.threshold).toBe(multisigConfig.threshold);
       expect(multisigConfigLocal.signers.toString()).toEqual(
@@ -240,9 +227,9 @@ describe("ton blockchain", () => {
       expect(orderConfig.approvals[0]).toBe(true);
       expect(
         orderConfig.approvals[1] ||
-        orderConfig.approvals[2] ||
-        orderConfig.approvals[3] ||
-        orderConfig.approvals[4],
+          orderConfig.approvals[2] ||
+          orderConfig.approvals[3] ||
+          orderConfig.approvals[4],
       ).toBe(false);
       expect(orderConfig.inited).toBe(true);
       expect(orderConfig.executed).toBe(false);
@@ -253,6 +240,7 @@ describe("ton blockchain", () => {
       const approvePayload = approveOrder(
         approver.address,
         orderConfig.signers,
+        orderAddress,
         Date.now(),
       );
       const transactions3 = await approver.send({
