@@ -37,6 +37,7 @@ interface SendJettonActionReadable {
   amount: bigint;
   recipient: Address;
   jettonWallet: Address;
+  comment: string;
 }
 
 interface UnknownActionReadable {
