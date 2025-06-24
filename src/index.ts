@@ -385,11 +385,22 @@ function parseActionViaOrdersCell(orders: Cell): ActionReadable[] {
             bodySlice.loadUintBig(Params.bitsize.queryId); // queryId
             const jettonAmount = bodySlice.loadCoins();
             const destReal = bodySlice.loadAddress();
+            bodySlice.loadAddress(); // response_destination
+            bodySlice.loadMaybeRef(); // custom_payload
+            bodySlice.loadCoins(); // forward_ton_amount
+            const commentRef = bodySlice.loadMaybeRef(); // forward_payload
+            let comment = "";
+            if (commentRef) {
+              const commentSlice = commentRef.beginParse();
+              commentSlice.loadUint(Params.bitsize.op) // opcode
+              comment = commentSlice.loadStringTail();
+            }
             actionsArray.push({
               type: "SEND_JETTON",
               amount: jettonAmount,
               recipient: destReal,
               jettonWallet: to,
+              comment
             });
           } else {
             actionsArray.push({
